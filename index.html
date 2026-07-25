@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111417">
+<title>Wembley Parking</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wembley Parking">
+<style>
+  :root {
+    --bg: #111417;
+    --card-fg: #ffffff;
+    --clear: #14804a;
+    --clear-edge: #1da864;
+    --event: #b3261e;
+    --event-edge: #e0483d;
+    --muted: #8b949e;
+    --line: #262b31;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100dvh;
+    padding: max(env(safe-area-inset-top), 16px) 16px max(env(safe-area-inset-bottom), 16px);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  header { flex: 0 0 auto; }
+
+  h1 {
+    margin: 0;
+    font-size: 19px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+  }
+
+  .sub {
+    margin: 3px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* --- The 7 boxes --- */
+  #grid {
+    flex: 1 1 auto;
+    display: grid;
+    grid-template-rows: repeat(7, minmax(52px, 1fr));
+    gap: 8px;
+    min-height: 0;
+  }
+
+  .day {
+    border-radius: 14px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--card-fg);
+    border: 1px solid transparent;
+    /* Colour is set by class, but never the only signal — see .badge/.label */
+  }
+
+  .day.clear { background: var(--clear); border-color: var(--clear-edge); }
+  .day.event { background: var(--event); border-color: var(--event-edge); }
+  .day.unknown { background: #21262d; border-color: var(--line); color: var(--muted); }
+
+  .day.today { box-shadow: 0 0 0 2px #ffffff inset; }
+
+  .dow {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    opacity: 0.85;
+    width: 3.2em;
+    flex: 0 0 auto;
+  }
+
+  .dnum {
+    font-size: 24px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    width: 2.1em;
+    flex: 0 0 auto;
+    line-height: 1;
+  }
+
+  .info { flex: 1 1 auto; min-width: 0; }
+
+  .label {
+    font-size: 14px;
+    font-weight: 650;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .why {
+    font-size: 12px;
+    opacity: 0.8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Redundant non-colour cue for colour-blind users and glanceability */
+  .badge {
+    flex: 0 0 auto;
+    font-size: 16px;
+    font-weight: 800;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: grid;
+    place-items: center;
+  }
+
+  footer {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border-top: 1px solid var(--line);
+    padding-top: 10px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  button {
+    font: inherit;
+    font-weight: 600;
+    color: #e6edf3;
+    background: #21262d;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 7px 13px;
+  }
+
+  button:active { background: #2d333b; }
+
+  #status.err { color: #ff9d94; }
+
+  a { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Wembley event days</h1>
+  <p class="sub">Red = stadium event, expect parking restrictions</p>
+</header>
+
+<main id="grid" aria-live="polite"></main>
+
+<footer>
+  <span id="status">Loading…</span>
+  <button id="refresh" type="button">Refresh</button>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  // Where the scraper publishes its output. Point this at your CDN/Pages URL
+  // once deployed, e.g. 'https://you.github.io/wembley-parking/events.json'
+  var DATA_URL = 'events.json';
+
+  // Last-known-good data, baked in so a cold start with no network still
+  // shows something useful rather than seven grey boxes.
+  var FALLBACK = {"scrapedAt":"2026-07-25T00:00:00.000Z","events":[
+    {"date":"2026-07-25","name":"Bruno Mars"},
+    {"date":"2026-07-28","name":"Bruno Mars"},
+    {"date":"2026-07-31","name":"Luke Combs"},
+    {"date":"2026-08-01","name":"Luke Combs"},
+    {"date":"2026-08-02","name":"Luke Combs"},
+    {"date":"2026-08-14","name":"The Weeknd"},
+    {"date":"2026-08-15","name":"The Weeknd"},
+    {"date":"2026-08-16","name":"The Weeknd"},
+    {"date":"2026-08-18","name":"The Weeknd"},
+    {"date":"2026-08-19","name":"The Weeknd"},
+    {"date":"2026-08-30","name":"AEW All In: London"},
+    {"date":"2026-09-04","name":"Bon Jovi"},
+    {"date":"2026-09-06","name":"Bon Jovi"},
+    {"date":"2026-09-09","name":"Bon Jovi"},
+    {"date":"2026-09-12","name":"Diljit Dosanjh"},
+    {"date":"2026-09-19","name":"Union Jack Classic"},
+    {"date":"2026-09-26","name":"England v Spain"},
+    {"date":"2026-10-06","name":"England v Czechia"},
+    {"date":"2026-10-18","name":"Jacksonville Jaguars 2026"}
+  ]};
+
+  var CACHE_KEY = 'wembley.events.v1';
+  var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  var grid = document.getElementById('grid');
+  var statusEl = document.getElementById('status');
+
+  /** Local-time ISO date (yyyy-mm-dd). Avoids toISOString()'s UTC shift, which
+   *  would roll the date over during BST evenings. */
+  function isoLocal(d) {
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+
+  /** The 7 Date objects: today plus the next six days. */
+  function window7() {
+    var days = [];
+    var base = new Date();
+    base.setHours(12, 0, 0, 0); // midday avoids DST edge cases on arithmetic
+    for (var i = 0; i < 7; i++) {
+      var d = new Date(base);
+      d.setDate(base.getDate() + i);
+      days.push(d);
+    }
+    return days;
+  }
+
+  function render(data, note) {
+    // Group events by date — a single day can host more than one.
+    var byDate = {};
+    (data && data.events ? data.events : []).forEach(function (e) {
+      (byDate[e.date] = byDate[e.date] || []).push(e.name);
+    });
+
+    var todayIso = isoLocal(new Date());
+    grid.textContent = '';
+
+    window7().forEach(function (d) {
+      var iso = isoLocal(d);
+      var names = byDate[iso];
+      var isEvent = !!names;
+
+      var box = document.createElement('div');
+      box.className = 'day ' + (isEvent ? 'event' : 'clear') + (iso === todayIso ? ' today' : '');
+      box.setAttribute('role', 'group');
+      box.setAttribute('aria-label',
+        d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }) +
+        (isEvent ? ': event day, parking restrictions likely. ' + names.join(', ')
+                 : ': no stadium event'));
+
+      box.innerHTML =
+        '<span class="dow">' + (iso === todayIso ? 'Today' : DOW[d.getDay()]) + '</span>' +
+        '<span class="dnum">' + d.getDate() + '</span>' +
+        '<span class="info">' +
+          '<span class="label">' + (isEvent ? 'Event day' : 'No event') + '</span>' +
+          '<span class="why">' + (isEvent ? esc(names.join(' · ')) :
+            d.toLocaleDateString('en-GB', { month: 'long' })) + '</span>' +
+        '</span>' +
+        '<span class="badge" aria-hidden="true">' + (isEvent ? '!' : '✓') + '</span>';
+
+      grid.appendChild(box);
+    });
+
+    var when = data && data.scrapedAt
+      ? new Date(data.scrapedAt).toLocaleDateString('en-GB',
+          { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : 'unknown';
+    statusEl.className = note ? 'err' : '';
+    statusEl.textContent = note ? note : 'Data from ' + when;
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  function cached() {
+    try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (e) { return null; }
+  }
+
+  function load() {
+    statusEl.className = '';
+    statusEl.textContent = 'Checking…';
+
+    fetch(DATA_URL, { cache: 'no-cache' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        if (!data || !Array.isArray(data.events) || !data.events.length) {
+          throw new Error('empty feed');
+        }
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch (e) {}
+        render(data);
+      })
+      .catch(function () {
+        // Offline or feed broken: fall back to cache, then to baked-in data.
+        var fb = cached() || FALLBACK;
+        render(fb, 'Offline — showing saved data');
+      });
+  }
+
+  document.getElementById('refresh').addEventListener('click', load);
+
+  // Recompute the window if the app sits in the background past midnight.
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) load();
+  });
+
+  // Paint immediately from cache so there's no empty first frame.
+  render(cached() || FALLBACK);
+  load();
+
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+})();
+</script>
+</body>
+</html>

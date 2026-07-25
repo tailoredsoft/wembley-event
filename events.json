@@ -1,0 +1,26 @@
+{
+  "source": "https://www.wembleystadium.com/events",
+  "scrapedAt": "2026-07-25T00:00:00.000Z",
+  "eventCount": 19,
+  "events": [
+    { "date": "2026-07-25", "name": "Bruno Mars" },
+    { "date": "2026-07-28", "name": "Bruno Mars" },
+    { "date": "2026-07-31", "name": "Luke Combs" },
+    { "date": "2026-08-01", "name": "Luke Combs" },
+    { "date": "2026-08-02", "name": "Luke Combs" },
+    { "date": "2026-08-14", "name": "The Weeknd" },
+    { "date": "2026-08-15", "name": "The Weeknd" },
+    { "date": "2026-08-16", "name": "The Weeknd" },
+    { "date": "2026-08-18", "name": "The Weeknd" },
+    { "date": "2026-08-19", "name": "The Weeknd" },
+    { "date": "2026-08-30", "name": "AEW All In: London" },
+    { "date": "2026-09-04", "name": "Bon Jovi" },
+    { "date": "2026-09-06", "name": "Bon Jovi" },
+    { "date": "2026-09-09", "name": "Bon Jovi" },
+    { "date": "2026-09-12", "name": "Diljit Dosanjh" },
+    { "date": "2026-09-19", "name": "Union Jack Classic" },
+    { "date": "2026-09-26", "name": "England v Spain" },
+    { "date": "2026-10-06", "name": "England v Czechia" },
+    { "date": "2026-10-18", "name": "Jacksonville Jaguars 2026" }
+  ]
+}
