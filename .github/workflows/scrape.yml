@@ -2,6 +2,8 @@ name: Scrape Wembley events
 
 # Runs daily and republishes the site (app + fresh events.json) to GitHub Pages.
 on:
+  push:
+    branches: [main] # deploy on every push, including the first one
   schedule:
     - cron: '17 5 * * *' # 05:17 UTC daily — off-the-hour to avoid runner congestion
   workflow_dispatch: # lets you trigger a run by hand from the Actions tab

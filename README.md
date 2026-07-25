@@ -25,7 +25,7 @@ The app never touches wembleystadium.com directly. It can't — the site sends n
 ## Try it locally
 
 ```bash
-cd wembley-parking
+cd wembley-event
 python3 -m http.server 8000
 # open http://localhost:8000
 ```
@@ -42,10 +42,12 @@ node test.js     # parser + date logic
 ## Deploy (GitHub Pages route)
 
 1. Push this folder to a GitHub repo.
-2. Settings → Pages → Source: **GitHub Actions**.
+2. Settings → Pages → Source: **GitHub Actions**. Nothing deploys until this is set — the `deploy-pages` step fails without it.
 3. Actions tab → run **Scrape Wembley events** once by hand to confirm it works.
 
-From then on it refreshes itself every morning at 05:17 UTC. Your app lives at `https://<you>.github.io/<repo>/`.
+Live at **https://tailoredsoft.github.io/wembley-event/** — note the trailing slash, and that the path must match the repo name exactly.
+
+After that it deploys on every push to `main` and re-scrapes every morning at 05:17 UTC.
 
 Cloudflare Workers + Cron Triggers works equally well if you'd rather not use Pages.
 
