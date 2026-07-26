@@ -1,0 +1,11 @@
+# Normalise line endings so editors on different platforms don't produce
+# phantom diffs where every line appears changed.
+#
+# text=auto  — git decides what's text, stores it as LF in the repository
+# eol=lf     — and checks it out as LF, matching what GitHub Pages serves
+
+* text=auto eol=lf
+
+# Never touch binaries
+*.png binary
+*.ico binary
