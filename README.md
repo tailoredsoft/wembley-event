@@ -26,17 +26,18 @@ The app never touches wembleystadium.com directly. It can't — the site sends n
 
 ```bash
 cd wembley-event
-python3 -m http.server 8000
-# open http://localhost:8000
+node serve.js      # then open http://localhost:8000
 ```
 
-Serve it rather than opening the file directly — `fetch` and service workers don't work over `file://`.
+Serve it rather than opening `index.html` directly — `file://` blocks `fetch` and service workers, so you'd be looking at the baked-in fallback data instead of the real feed.
 
-Run the scraper and the tests:
+Other commands:
 
 ```bash
-node scrape.js   # rewrites events.json from the live page
-node test.js     # parser + date logic
+node check.js      # every pre-merge check, same script CI runs
+node scrape.js     # rewrite events.json from the live page
+node test.js       # just the parser and date-window tests
+check.cmd serve    # Windows: checks, then serve
 ```
 
 ## Deploy (GitHub Pages route)

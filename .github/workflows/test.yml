@@ -1,0 +1,27 @@
+name: Tests
+
+# Runs on pull requests so a broken parser or malformed events.json is caught
+# before it can reach main — and therefore before it can reach the deploy.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Deliberately one step calling one script, so that `node check.js` on a
+      # laptop runs exactly what CI runs — no drift between the two.
+      - name: Checks
+        run: node check.js

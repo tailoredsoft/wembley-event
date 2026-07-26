@@ -167,6 +167,15 @@
     font-size: 19px;
   }
 
+  /* No-waiting sign, shown only on event days. Sits at the row's trailing
+     edge, using space that was empty, so it doesn't crowd the pill. */
+  .ban {
+    flex: 0 0 auto;
+    width: 42px;
+    height: 42px;
+    display: block;
+  }
+
   .why {
     display: block;
     margin-top: 4px;
@@ -256,6 +265,24 @@
   var CACHE_KEY = 'wembley.events.v1';
   var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+  // The UK "no waiting" sign, drawn rather than emoji'd: 🅿️ + ❌ renders
+  // differently on every platform and reads as two unrelated glyphs. The white
+  // outer ring separates it from the red row behind it.
+  var NO_PARKING =
+    '<svg class="ban" viewBox="0 0 40 40" aria-hidden="true" focusable="false">' +
+      '<circle cx="20" cy="20" r="19" fill="#ffffff"/>' +
+      '<circle cx="20" cy="20" r="17" fill="#0d5aa7"/>' +
+      // Thinner ring frees up interior space for a bigger letter.
+      '<circle cx="20" cy="20" r="14.6" fill="none" stroke="#e02b1f" stroke-width="4.6"/>' +
+      '<text x="20" y="20.5" fill="#ffffff" font-family="-apple-system, Helvetica, Arial, sans-serif"' +
+        ' font-size="22" font-weight="800" text-anchor="middle"' +
+        ' dominant-baseline="central">P</text>' +
+      // Slash last so it sits over the letter, as the real sign does — but thin
+      // enough (3.6 against a 22px bold P) that the P still reads clearly.
+      '<line x1="10.8" y1="10.8" x2="29.2" y2="29.2" stroke="#e02b1f" stroke-width="3.6"' +
+        ' stroke-linecap="round"/>' +
+    '</svg>';
+
   var grid = document.getElementById('grid');
   var statusEl = document.getElementById('status');
 
@@ -312,7 +339,8 @@
             (isEvent ? 'EVENT DAY' : 'NO EVENT') +
           '</span>' +
           (isEvent ? '<span class="why">' + esc(names.join(' · ')) + '</span>' : '') +
-        '</span>';
+        '</span>' +
+        (isEvent ? NO_PARKING : '');
 
       grid.appendChild(box);
     });
