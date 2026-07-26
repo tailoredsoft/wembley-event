@@ -1,12 +1,8 @@
 {
   "source": "https://www.wembleystadium.com/events",
-  "scrapedAt": "2026-07-25T14:04:15.624Z",
-  "eventCount": 19,
+  "scrapedAt": "2026-07-26T06:17:40.138Z",
+  "eventCount": 18,
   "events": [
-    {
-      "date": "2026-07-25",
-      "name": "Bruno Mars"
-    },
     {
       "date": "2026-07-28",
       "name": "Bruno Mars"
