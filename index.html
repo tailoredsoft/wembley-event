@@ -119,8 +119,8 @@
   .pill {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    padding: 6px 12px 6px 10px;
+    gap: 8px;
+    padding: 5px 12px 5px 5px;
     border-radius: 9px;
     font-size: 15px;
     font-weight: 800;
@@ -139,7 +139,33 @@
     color: #0a4526; /* 9.4:1 */
   }
 
-  .pill .glyph { font-size: 17px; line-height: 1; }
+  /* The glyph gets its own tile so the warning triangle reads as a sign
+     rather than a character. Amber is a third hue on top of red/green, which
+     survives every common form of colour blindness. */
+  .pill .glyph {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 21px;
+    line-height: 1;
+  }
+
+  .day.event .pill .glyph {
+    background: #f5a300;
+    color: #3d2200; /* 8.0:1 on the amber tile */
+    /* The ⚠ glyph carries slack below its baseline — nudge it back to centre */
+    padding-bottom: 2px;
+  }
+
+  .day.clear .pill .glyph {
+    background: #c9ecd8;
+    color: #0a4526;
+    font-size: 19px;
+  }
 
   .why {
     display: block;
