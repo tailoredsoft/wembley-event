@@ -9,7 +9,7 @@ on:
   workflow_dispatch: # lets you trigger a run by hand from the Actions tab
 
 permissions:
-  contents: write
+  contents: read # the workflow no longer commits, so read is enough
   pages: write
   id-token: write
 
@@ -27,28 +27,38 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Scrape events
-        run: node scrape.js --out events.json
-
-      - name: Show diff
-        run: git --no-pager diff --stat events.json || true
-
-      - name: Commit if changed
-        run: |
-          if git diff --quiet events.json; then
-            echo "No change in event data."
-          else
-            git config user.name  "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -am "chore: refresh Wembley event data"
-            git push
-          fi
-
       - name: Package site
         run: |
           mkdir -p _site
           cp index.html events.json manifest.webmanifest sw.js LICENSE _site/
           cp icon-*.png apple-touch-icon.png _site/ 2>/dev/null || true
+
+      # Scrape straight into the deploy folder, never into the repository.
+      # The committed events.json stays as a seed for local development; the
+      # published one is rebuilt fresh on every run. This keeps the workflow
+      # from pushing commits, which would otherwise leave your local clone
+      # permanently behind and force a pull before every push.
+      # continue-on-error so a Wembley outage or markup change degrades to
+      # "deploy yesterday's data" rather than "deploy nothing at all". The
+      # committed events.json was already copied into _site above, so a failed
+      # scrape simply leaves that seed in place.
+      - name: Scrape events into the site
+        id: scrape
+        continue-on-error: true
+        run: node scrape.js --out _site/events.json
+
+      - name: Report what was published
+        run: |
+          node -e "
+            const d = require('./_site/events.json');
+            const ageDays = (Date.now() - new Date(d.scrapedAt)) / 86400000;
+            console.log(d.eventCount + ' events, scraped ' + d.scrapedAt);
+            d.events.slice(0, 8).forEach(e => console.log('  ' + e.date + '  ' + e.name));
+            if (ageDays > 2) {
+              console.log('::warning::Published event data is ' + ageDays.toFixed(1) +
+                ' days old — the scrape probably failed. Check the Scrape step.');
+            }
+          "
 
       - uses: actions/upload-pages-artifact@v3
         with:
