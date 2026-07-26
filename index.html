@@ -349,8 +349,30 @@
       ? new Date(data.scrapedAt).toLocaleDateString('en-GB',
           { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
       : 'unknown';
-    statusEl.className = note ? 'err' : '';
-    statusEl.textContent = note ? note : 'Data from ' + when;
+
+    // Days old matters: a green box means "no event was listed when this data
+    // was scraped", which is a weaker claim the older the data gets. Say so
+    // rather than letting stale data look authoritative.
+    //
+    // The threshold is 7 days because the feed runs months ahead — stadium
+    // events are announced far in advance, so week-old data is still accurate
+    // for the 7-day window unless something was added at short notice.
+    var STALE_AFTER_DAYS = 7;
+
+    var ageDays = data && data.scrapedAt
+      ? (Date.now() - new Date(data.scrapedAt)) / 86400000
+      : Infinity;
+
+    if (note) {
+      statusEl.className = 'err';
+      statusEl.textContent = note;
+    } else if (ageDays > STALE_AFTER_DAYS) {
+      statusEl.className = 'err';
+      statusEl.textContent = 'Data is ' + Math.floor(ageDays) + ' days old — check signage';
+    } else {
+      statusEl.className = '';
+      statusEl.textContent = 'Data from ' + when;
+    }
   }
 
   function esc(s) {
@@ -367,7 +389,9 @@
     statusEl.className = '';
     statusEl.textContent = 'Checking…';
 
-    fetch(DATA_URL, { cache: 'no-cache' })
+    // no-store plus a unique URL: bypasses both the browser cache and the
+    // Pages CDN, so this is always today's feed even without the worker.
+    fetch(DATA_URL + '?_=' + Date.now(), { cache: 'no-store' })
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
@@ -399,6 +423,20 @@
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(function () {});
+
+    // The worker serves the cached shell instantly, then compares it with the
+    // network. If a new version was deployed it tells us, and we reload once —
+    // guarded by a session flag so a persistent difference can't loop.
+    navigator.serviceWorker.addEventListener('message', function (e) {
+      if (!e.data || e.data.type !== 'shell-updated') return;
+      try {
+        if (sessionStorage.getItem('reloadedFor')) return;
+        sessionStorage.setItem('reloadedFor', '1');
+      } catch (_) {
+        return; // no sessionStorage: skip rather than risk a reload loop
+      }
+      location.reload();
+    });
   }
 })();
 </script>
