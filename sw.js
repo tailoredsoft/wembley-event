@@ -12,7 +12,7 @@
  * Bump CACHE_VERSION whenever you change index.html.
  */
 
-const CACHE_VERSION = 'wembley-v2';
+const CACHE_VERSION = 'wembley-v3';
 const SHELL = ['./', './index.html', './manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
