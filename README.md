@@ -88,3 +88,9 @@ A few decisions worth knowing about if you change things:
 **Terms of use.** Wembley's [terms](https://www.wembleystadium.com/public/terms-of-use) may restrict automated access. Fine for a personal daily fetch in most readings, but read them before publishing this to a store. Brent Council publishes event-day parking information directly and may be a more appropriate source for a public app.
 
 Neither is a code problem, but both affect whether you'd want to ship this.
+
+## Licence
+
+Copyright (c) 2026 Tailoredsoft. All rights reserved. Proprietary — see [LICENSE](LICENSE). Viewing permitted; copying, modification, redistribution, and redeployment are not, without prior written permission.
+
+Not affiliated with Wembley Stadium, The Football Association, or Brent Council. Event data is read from publicly published sources and carries no guarantee of accuracy — don't rely on it as your only check before parking.

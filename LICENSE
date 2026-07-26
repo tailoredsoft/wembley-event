@@ -1,0 +1,39 @@
+Copyright (c) 2026 Tailoredsoft. All rights reserved.
+
+This software and its accompanying files (the "Software") are the
+proprietary work of Tailoredsoft.
+
+PERMITTED
+
+  You may view and read the Software, including the source served by any
+  public deployment of it.
+
+NOT PERMITTED
+
+  Without prior written permission from Tailoredsoft, you may not:
+
+    - copy, reproduce, or republish the Software or any part of it;
+    - modify the Software or create derivative works from it;
+    - distribute, sublicense, sell, or otherwise transfer the Software;
+    - deploy or host the Software, whether publicly or privately;
+    - remove or alter any copyright or attribution notice within it.
+
+NO WARRANTY
+
+  The Software is provided "as is", without warranty of any kind, express
+  or implied, including but not limited to the warranties of
+  merchantability, fitness for a particular purpose, and non-infringement.
+  In no event shall the copyright holder be liable for any claim, damages,
+  or other liability arising from or in connection with the Software or its
+  use.
+
+NO AFFILIATION
+
+  This project is not affiliated with, endorsed by, or connected to Wembley
+  Stadium, The Football Association, or Brent Council. Event information is
+  read from publicly published sources and is provided without guarantee of
+  accuracy, completeness, or timeliness. It must not be relied upon as the
+  sole basis for any parking decision.
+
+For permission enquiries, open an issue at
+https://github.com/tailoredsoft/wembley-event

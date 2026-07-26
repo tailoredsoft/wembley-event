@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 /**
+ * Copyright (c) 2026 Tailoredsoft. All rights reserved.
+ * Proprietary — see LICENSE. Not affiliated with Wembley Stadium or The FA.
+ *
  * Wembley Stadium event-day scraper.
  *
  * Fetches the public events listing, extracts every event date, and writes

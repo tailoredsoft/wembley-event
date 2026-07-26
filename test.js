@@ -1,4 +1,7 @@
 /**
+ * Copyright (c) 2026 Tailoredsoft. All rights reserved.
+ * Proprietary — see LICENSE.
+ *
  * Parser tests. Run: node test.js
  * Uses a fixture that mirrors the real page's card structure, plus the
  * footer/nav noise that a naive date regex would trip over.

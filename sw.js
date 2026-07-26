@@ -1,4 +1,7 @@
 /**
+ * Copyright (c) 2026 Tailoredsoft. All rights reserved.
+ * Proprietary — see LICENSE.
+ *
  * Service worker: makes the app installable and usable offline.
  *
  * Strategy differs by resource type:
@@ -9,7 +12,7 @@
  * Bump CACHE_VERSION whenever you change index.html.
  */
 
-const CACHE_VERSION = 'wembley-v1';
+const CACHE_VERSION = 'wembley-v2';
 const SHELL = ['./', './index.html', './manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
