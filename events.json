@@ -1,20 +1,8 @@
 {
   "source": "https://www.wembleystadium.com/events",
-  "scrapedAt": "2026-07-26T08:02:43.285Z",
-  "eventCount": 18,
+  "scrapedAt": "2026-08-02T08:32:15.685Z",
+  "eventCount": 15,
   "events": [
-    {
-      "date": "2026-07-28",
-      "name": "Bruno Mars"
-    },
-    {
-      "date": "2026-07-31",
-      "name": "Luke Combs"
-    },
-    {
-      "date": "2026-08-01",
-      "name": "Luke Combs"
-    },
     {
       "date": "2026-08-02",
       "name": "Luke Combs"

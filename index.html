@@ -44,8 +44,14 @@
   }
 
   body {
-    min-height: 100dvh;
     padding: max(env(safe-area-inset-top), 16px) 16px max(env(safe-area-inset-bottom), 16px);
+  }
+
+  /* The first screenful: header plus the 7 boxes, sized to fill the viewport
+     exactly as before. Everything after it flows below and scrolls normally. */
+  .screen {
+    min-height: calc(100dvh - max(env(safe-area-inset-top), 16px)
+                            - max(env(safe-area-inset-bottom), 16px));
     display: flex;
     flex-direction: column;
     gap: 14px;
@@ -187,13 +193,87 @@
     text-overflow: ellipsis;
   }
 
-  footer {
+  /* --- Months ahead (below the fold) --- */
+  #ahead { padding-top: 22px; }
+
+  .month { margin-bottom: 20px; }
+
+  .month h2 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .cal {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+  }
+
+  .cal .dowhead {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: center;
+    padding-bottom: 2px;
+  }
+
+  .cell {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    background: #21262d; /* unknown / outside the feed */
+    border: 0 solid transparent;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .cell.blank { background: none; }
+  .cell.past { background: #191d21; color: #4d545c; }
+  .cell.clear { background: var(--clear); }
+
+  /* Amber underline repeats the pill's non-colour cue, so event cells are
+     distinguishable without relying on red vs green. */
+  .cell.event {
+    background: var(--event);
+    border-bottom-width: 3px;
+    border-bottom-color: #f5a300;
+    font-weight: 800;
+  }
+
+  .cell.today { box-shadow: 0 0 0 2px #ffffff inset; }
+  .cell.event:active { filter: brightness(1.25); }
+
+  #detail {
+    min-height: 20px;
+    margin: 2px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #e6edf3;
+  }
+
+  #detail.empty { color: var(--muted); font-weight: 400; }
+
+  .hint {
     flex: 0 0 auto;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    padding-bottom: 2px;
+  }
+
+  footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
     border-top: 1px solid var(--line);
+    margin-top: 8px;
     padding-top: 10px;
     font-size: 12px;
     color: var(--muted);
@@ -218,12 +298,20 @@
 </head>
 <body>
 
-<header>
-  <h1>Wembley event days</h1>
-  <p class="sub">Red = stadium event, expect parking restrictions</p>
-</header>
+<div class="screen">
+  <header>
+    <h1>Wembley event days</h1>
+    <p class="sub">Red = stadium event, expect parking restrictions</p>
+  </header>
 
-<main id="grid" aria-live="polite"></main>
+  <main id="grid" aria-live="polite"></main>
+
+  <p class="hint" id="hint"></p>
+</div>
+
+<section id="ahead" aria-label="Months ahead">
+  <p id="detail" class="empty">Tap a red date for details</p>
+</section>
 
 <footer>
   <span id="status">Loading…</span>
@@ -345,6 +433,17 @@
       grid.appendChild(box);
     });
 
+    // Everything beyond the 7-day view.
+    var allDates = Object.keys(byDate).sort();
+    var lastKnown = allDates.length ? allDates[allDates.length - 1] : null;
+    renderAhead(byDate, lastKnown);
+
+    var hint = document.getElementById('hint');
+    var futureEvents = allDates.filter(function (iso) { return iso > todayIso; }).length;
+    hint.textContent = futureEvents
+      ? '↓ ' + futureEvents + ' more event day' + (futureEvents === 1 ? '' : 's') + ' ahead'
+      : '';
+
     var when = data && data.scrapedAt
       ? new Date(data.scrapedAt).toLocaleDateString('en-GB',
           { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -374,6 +473,133 @@
       statusEl.textContent = 'Data from ' + when;
     }
   }
+
+  var MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+    'August', 'September', 'October', 'November', 'December'];
+
+  /**
+   * Month grids for everything ahead: from this month through the month of the
+   * last listed event. Cells are coloured only up to that last event — beyond
+   * it we have no information, so they stay neutral rather than implying the
+   * date is clear.
+   */
+  function renderAhead(byDate, lastKnown) {
+    var ahead = document.getElementById('ahead');
+    var detail = document.getElementById('detail');
+    if (!lastKnown) {
+      ahead.querySelectorAll('.month').forEach(function (n) { n.remove(); });
+      return;
+    }
+
+    var todayIso = isoLocal(new Date());
+    var today = new Date();
+    today.setHours(12, 0, 0, 0);
+
+    var end = new Date(lastKnown + 'T12:00:00');
+    var frag = document.createDocumentFragment();
+
+    var cursor = new Date(today.getFullYear(), today.getMonth(), 1, 12);
+    var guard = 0;
+
+    while (cursor <= end && guard++ < 24) {
+      var year = cursor.getFullYear();
+      var month = cursor.getMonth();
+
+      var section = document.createElement('div');
+      section.className = 'month';
+
+      var h2 = document.createElement('h2');
+      h2.textContent = MONTH_NAMES[month] + (year !== today.getFullYear() ? ' ' + year : '');
+      section.appendChild(h2);
+
+      var cal = document.createElement('div');
+      cal.className = 'cal';
+
+      ['M', 'T', 'W', 'T', 'F', 'S', 'S'].forEach(function (d, i) {
+        var head = document.createElement('span');
+        head.className = 'dowhead';
+        head.textContent = d;
+        head.setAttribute('aria-hidden', 'true');
+        cal.appendChild(head);
+      });
+
+      // Monday-first offset: JS getDay() is Sunday-first.
+      var firstDay = new Date(year, month, 1).getDay();
+      var lead = (firstDay + 6) % 7;
+      for (var b = 0; b < lead; b++) {
+        var blank = document.createElement('span');
+        blank.className = 'cell blank';
+        cal.appendChild(blank);
+      }
+
+      var daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      for (var day = 1; day <= daysInMonth; day++) {
+        var d = new Date(year, month, day, 12);
+        var iso = isoLocal(d);
+        var names = byDate[iso];
+
+        var cell = document.createElement('span');
+        cell.className = 'cell';
+        cell.textContent = day;
+
+        var state;
+        if (iso < todayIso) {
+          cell.className += ' past';
+          state = 'past';
+        } else if (names) {
+          cell.className += ' event';
+          state = 'event day — ' + names.join(', ');
+          cell.setAttribute('role', 'button');
+          cell.setAttribute('tabindex', '0');
+          cell.dataset.iso = iso;
+          cell.dataset.names = names.join(' · ');
+        } else if (iso <= lastKnown) {
+          cell.className += ' clear';
+          state = 'no event';
+        } else {
+          state = 'not listed yet';
+        }
+
+        if (iso === todayIso) cell.className += ' today';
+
+        cell.setAttribute('aria-label',
+          d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) + ': ' + state);
+
+        cal.appendChild(cell);
+      }
+
+      section.appendChild(cal);
+      frag.appendChild(section);
+      cursor = new Date(year, month + 1, 1, 12);
+    }
+
+    ahead.querySelectorAll('.month').forEach(function (n) { n.remove(); });
+    ahead.appendChild(frag);
+
+    detail.textContent = 'Tap a red date for details';
+    detail.className = 'empty';
+  }
+
+  // One delegated listener rather than one per cell.
+  document.addEventListener('click', function (e) {
+    var cell = e.target.closest ? e.target.closest('.cell.event') : null;
+    if (!cell) return;
+    var detail = document.getElementById('detail');
+    var d = new Date(cell.dataset.iso + 'T12:00:00');
+    detail.className = '';
+    detail.textContent =
+      d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long' }) +
+      ' — ' + cell.dataset.names;
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target && e.target.classList && e.target.classList.contains('event')) {
+      e.preventDefault();
+      e.target.click();
+    }
+  });
 
   function esc(s) {
     return String(s).replace(/[&<>"]/g, function (c) {
