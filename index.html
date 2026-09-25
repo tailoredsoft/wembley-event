@@ -259,6 +259,36 @@
     color: var(--muted);
   }
 
+  /* Events past the three-month grid horizon, listed compactly. */
+  .beyondRow {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin: 0 0 6px;
+    padding: 8px 12px;
+    background: #191d21;
+    border-left: 3px solid var(--event);
+    border-radius: 0; /* single-sided border: square corners */
+    font-size: 13px;
+  }
+
+  .beyondDate {
+    flex: 0 0 auto;
+    width: 6.6em;
+    color: #cbd5e0;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .beyondName {
+    flex: 1 1 auto;
+    min-width: 0;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   /* Selected cell keeps an amber ring so it's obvious which date the bar is
      describing, even when the bar is at the other end of the screen. */
   .cell.sel { box-shadow: 0 0 0 3px #f5a300 inset; }
@@ -594,12 +624,23 @@
     today.setHours(12, 0, 0, 0);
 
     var end = new Date(lastKnown + 'T12:00:00');
+
+    // Cap the grids at three months. The feed runs to 2027, and twelve month
+    // grids is a long scroll for information nobody needs at a glance.
+    // Anything past the horizon is listed compactly below instead.
+    var HORIZON_MONTHS = 3;
+    var horizonEnd = new Date(today.getFullYear(), today.getMonth() + HORIZON_MONTHS, 0, 12);
+
+    // Stop at whichever comes first: the horizon, or the last event we know of.
+    // Without the second test, a short feed would render empty grey months.
+    var stopAt = end < horizonEnd ? end : horizonEnd;
+
     var frag = document.createDocumentFragment();
 
     var cursor = new Date(today.getFullYear(), today.getMonth(), 1, 12);
     var guard = 0;
 
-    while (cursor <= end && guard++ < 24) {
+    while (cursor <= stopAt && guard++ < 24) {
       var year = cursor.getFullYear();
       var month = cursor.getMonth();
 
@@ -675,6 +716,34 @@
       cursor = new Date(year, month + 1, 1, 12);
     }
 
+    // Events past the horizon: listed rather than gridded, so a date in 2027
+    // is still discoverable without scrolling through empty months.
+    var beyond = Object.keys(byDate).filter(function (iso) {
+      return new Date(iso + 'T12:00:00') > horizonEnd;
+    }).sort();
+
+    if (beyond.length) {
+      var later = document.createElement('div');
+      later.className = 'month beyond';
+
+      var h = document.createElement('h2');
+      h.textContent = 'Further ahead';
+      later.appendChild(h);
+
+      beyond.forEach(function (iso) {
+        var d = new Date(iso + 'T12:00:00');
+        var row = document.createElement('p');
+        row.className = 'beyondRow';
+        row.innerHTML =
+          '<span class="beyondDate">' +
+            d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) +
+          '</span><span class="beyondName">' + esc(byDate[iso].join(' · ')) + '</span>';
+        later.appendChild(row);
+      });
+
+      frag.appendChild(later);
+    }
+
     ahead.querySelectorAll('.month').forEach(function (n) { n.remove(); });
     ahead.appendChild(frag);
 
@@ -734,6 +803,54 @@
     try { return JSON.parse(localStorage.getItem(CACHE_KEY)); } catch (e) { return null; }
   }
 
+  /**
+   * Repair a stale shell.
+   *
+   * A service worker can end up serving HTML from weeks ago while events.json
+   * still updates, because only the data is fetched network-first. The user
+   * then sees current data in an old interface, with no way to fix it short of
+   * deleting and reinstalling the app — not something to ask volunteers to do.
+   *
+   * The deploy stamps the same build identifier into both the HTML and the
+   * feed. If the freshly-fetched feed names a different build than this page
+   * was built as, the shell is out of date: drop every cache, unregister the
+   * worker, and reload. A session flag means this can happen at most once per
+   * launch, so a persistent mismatch can't become a reload loop.
+   */
+  function healIfStale(data) {
+    var mine = buildEl ? buildEl.textContent.trim() : '';
+    var live = data && data.build;
+
+    if (!live || !mine || mine === 'dev' || mine === live) return;
+
+    try {
+      if (sessionStorage.getItem('healedFor') === live) return;
+      sessionStorage.setItem('healedFor', live);
+    } catch (e) {
+      return; // no storage: don't risk looping
+    }
+
+    statusEl.className = '';
+    statusEl.textContent = 'Updating app…';
+
+    var reload = function () { location.reload(); };
+    var clearCaches = window.caches && caches.keys
+      ? caches.keys().then(function (keys) {
+          return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+        })
+      : Promise.resolve();
+
+    clearCaches
+      .then(function () {
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          return navigator.serviceWorker.getRegistrations().then(function (regs) {
+            return Promise.all(regs.map(function (r) { return r.unregister(); }));
+          });
+        }
+      })
+      .then(reload, reload);
+  }
+
   function load() {
     statusEl.className = '';
     statusEl.textContent = 'Checking…';
@@ -751,6 +868,7 @@
         }
         try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch (e) {}
         render(data);
+        healIfStale(data);
       })
       .catch(function () {
         // Offline or feed broken: fall back to cache, then to baked-in data.

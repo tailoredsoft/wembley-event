@@ -58,6 +58,22 @@ jobs:
         continue-on-error: true
         run: node scrape.js --out _site/events.json
 
+      # Put the build stamp inside events.json too. That file is the only one
+      # fetched network-first, so it always arrives fresh even when a stale
+      # service worker is serving an old shell. The page compares this value
+      # with its own stamp and repairs itself when they disagree.
+      - name: Stamp build into the data feed
+        run: |
+          STAMP="$(echo $GITHUB_SHA | cut -c1-7) $(date -u '+%d %b %H:%M')"
+          node -e "
+            const fs = require('fs');
+            const p = '_site/events.json';
+            const d = JSON.parse(fs.readFileSync(p, 'utf8'));
+            d.build = process.argv[1];
+            fs.writeFileSync(p, JSON.stringify(d, null, 2) + '\n');
+            console.log('stamped feed with build ' + d.build);
+          " "$STAMP"
+
       - name: Report what was published
         run: |
           node -e "
