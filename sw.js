@@ -21,7 +21,7 @@
  * clears entries left by older versions.
  */
 
-const CACHE_VERSION = 'wembley-v14';
+const CACHE_VERSION = 'wembley-v15';
 const SHELL = ['./', './index.html', './manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

@@ -33,6 +33,17 @@ jobs:
           cp index.html events.json manifest.webmanifest sw.js LICENSE _site/
           cp icon-*.png apple-touch-icon.png _site/ 2>/dev/null || true
 
+      # Stamp the build into the page and the worker. The visible stamp tells
+      # you which HTML a phone is running; stamping sw.js guarantees its bytes
+      # change on every deploy, which is what makes browsers re-install it.
+      - name: Stamp build identifier
+        run: |
+          STAMP="$(echo $GITHUB_SHA | cut -c1-7) $(date -u '+%d %b %H:%M')"
+          echo "Build: $STAMP"
+          sed -i "s|__BUILD__|$STAMP|g" _site/index.html
+          printf '\n// build: %s\n' "$STAMP" >> _site/sw.js
+          grep -o '__BUILD__' _site/index.html && echo "WARNING: placeholder not replaced" || true
+
       # Scrape straight into the deploy folder, never into the repository.
       # The committed events.json stays as a seed for local development; the
       # published one is rebuilt fresh on every run. This keeps the workflow

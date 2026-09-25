@@ -367,6 +367,17 @@
 
   #status.err { color: #ff9d94; }
 
+  /* Stamped in by the deploy workflow. Its only job is to end arguments about
+     which build a given phone is actually running — cached shells have made
+     that ambiguous more than once. "dev" locally, commit + time when deployed. */
+  #build {
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: #5f6b78;
+    letter-spacing: 0.02em;
+  }
+
   a { color: var(--muted); }
 </style>
 </head>
@@ -394,6 +405,7 @@
 
 <footer>
   <span id="status">Loading…</span>
+  <span id="build" title="Build identifier">__BUILD__</span>
   <button id="refresh" type="button">Refresh</button>
 </footer>
 
@@ -455,6 +467,11 @@
 
   var grid = document.getElementById('grid');
   var statusEl = document.getElementById('status');
+
+  // Unreplaced placeholder means this copy was not deployed — running from a
+  // local server or opened straight from disk.
+  var buildEl = document.getElementById('build');
+  if (buildEl && buildEl.textContent.indexOf('BUILD') > -1) buildEl.textContent = 'dev';
 
   /** Local-time ISO date (yyyy-mm-dd). Avoids toISOString()'s UTC shift, which
    *  would roll the date over during BST evenings. */
