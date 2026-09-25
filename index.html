@@ -50,6 +50,10 @@
   /* The first screenful: header plus the 7 boxes, sized to fill the viewport
      exactly as before. Everything after it flows below and scrolls normally. */
   .screen {
+    /* vh first as a fallback for engines without dvh; dvh then wins where
+       supported, and is what handles Safari's collapsing address bar. */
+    min-height: calc(100vh - max(env(safe-area-inset-top), 16px)
+                           - max(env(safe-area-inset-bottom), 16px));
     min-height: calc(100dvh - max(env(safe-area-inset-top), 16px)
                             - max(env(safe-area-inset-bottom), 16px));
     display: flex;
@@ -259,6 +263,17 @@
      describing, even when the bar is at the other end of the screen. */
   .cell.sel { box-shadow: 0 0 0 3px #f5a300 inset; }
 
+  /* iOS Safari only bubbles click events to document from elements it treats
+     as interactive. cursor:pointer is what marks a span as clickable there —
+     without it, taps on these cells fire nothing on iPhone while working
+     perfectly on desktop. Listeners are also bound per cell (see renderAhead)
+     so behaviour doesn't depend on this rule alone.
+     touch-action removes the 300ms double-tap-zoom delay. */
+  .cell.event {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
   /* The detail bar is fixed to the viewport rather than sitting in the flow.
      Tapping a date in October used to put its details above September, forcing
      a scroll back up to read them. */
@@ -426,9 +441,12 @@
       '<circle cx="20" cy="20" r="17" fill="#0d5aa7"/>' +
       // Thinner ring frees up interior space for a bigger letter.
       '<circle cx="20" cy="20" r="14.6" fill="none" stroke="#e02b1f" stroke-width="4.6"/>' +
-      '<text x="20" y="20.5" fill="#ffffff" font-family="-apple-system, Helvetica, Arial, sans-serif"' +
-        ' font-size="22" font-weight="800" text-anchor="middle"' +
-        ' dominant-baseline="central">P</text>' +
+      // dy rather than dominant-baseline: WebKit's support for the latter has
+      // been inconsistent, and a mis-centred P is exactly the kind of thing
+      // that looks fine on desktop and wrong on a phone.
+      '<text x="20" y="20" dy="0.35em" fill="#ffffff"' +
+        ' font-family="-apple-system, Helvetica, Arial, sans-serif"' +
+        ' font-size="22" font-weight="800" text-anchor="middle">P</text>' +
       // Slash last so it sits over the letter, as the real sign does — but thin
       // enough (3.6 against a 22px bold P) that the P still reads clearly.
       '<line x1="10.8" y1="10.8" x2="29.2" y2="29.2" stroke="#e02b1f" stroke-width="3.6"' +
@@ -617,6 +635,9 @@
           cell.setAttribute('tabindex', '0');
           cell.dataset.iso = iso;
           cell.dataset.names = names.join(' · ');
+          // Bound directly rather than relying on delegation, which iOS
+          // Safari does not perform for taps on plain spans.
+          cell.addEventListener('click', onCellTap);
         } else if (iso <= lastKnown) {
           cell.className += ' clear';
           state = 'no event';
@@ -665,21 +686,17 @@
     document.body.classList.add('bar-open');
   }
 
-  // One delegated listener rather than one per cell.
-  document.addEventListener('click', function (e) {
-    if (!e.target.closest) return;
-
-    if (e.target.closest('#detailClose')) {
-      hideDetail();
-      return;
-    }
-
-    var cell = e.target.closest('.cell.event');
-    if (!cell) return;
-
+  /** Shared by the per-cell listeners bound in renderAhead. */
+  function onCellTap(e) {
+    var cell = e.currentTarget;
     // Tapping the selected date again closes the bar.
     if (cell.classList.contains('sel')) hideDetail();
     else showDetail(cell);
+  }
+
+  // The close button is a real <button>, so delegation is reliable for it.
+  document.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('#detailClose')) hideDetail();
   });
 
   document.addEventListener('keydown', function (e) {
