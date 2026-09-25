@@ -71,3 +71,28 @@ jobs:
       name: github-pages
     steps:
       - uses: actions/deploy-pages@v4
+
+  # A failing scrape used to be invisible: continue-on-error kept the run green
+  # while the site served the committed seed. This job checks what was actually
+  # published and fails the run if it's stale, so the Actions tab goes red and
+  # GitHub emails you instead of the app quietly going out of date for weeks.
+  verify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Published data must be fresh
+        run: |
+          sleep 20  # give the CDN a moment to serve the new deploy
+          URL="https://tailoredsoft.github.io/wembley-event/events.json?ci=$GITHUB_RUN_ID"
+          curl -sS --retry 3 --retry-delay 5 "$URL" -o published.json
+          node -e "
+            const d = JSON.parse(require('fs').readFileSync('published.json', 'utf8'));
+            const ageHours = (Date.now() - new Date(d.scrapedAt)) / 3600000;
+            console.log('published: ' + d.events.length + ' events, scraped ' + d.scrapedAt);
+            console.log('age: ' + ageHours.toFixed(1) + ' hours');
+            if (ageHours > 48) {
+              console.log('::error::Published event data is ' + (ageHours / 24).toFixed(1) +
+                ' days old. The scrape step is failing — check its log above.');
+              process.exit(1);
+            }
+          "

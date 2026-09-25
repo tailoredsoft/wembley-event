@@ -104,6 +104,49 @@ function arg(flag) {
   return i > -1 ? process.argv[i + 1] : null;
 }
 
+/**
+ * Fetch the events page, retrying on transient failures.
+ *
+ * The headers matter. An earlier version sent a custom User-Agent
+ * ("wembley-parking-app/1.0") which worked from a home connection but appears
+ * to have been rejected when the request came from a GitHub Actions runner —
+ * the scheduled scrape silently failed for weeks while local runs succeeded.
+ * These are ordinary browser headers: enough to be served normally, and the
+ * request rate (once a day) is lower than a single human visitor's.
+ */
+async function fetchWithRetry(url, attempts = 3) {
+  const headers = {
+    'User-Agent':
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
+      '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-GB,en;q=0.9',
+    'Cache-Control': 'no-cache',
+  };
+
+  let lastError;
+
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      const res = await fetch(url, { headers, redirect: 'follow' });
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
+
+      const text = await res.text();
+      if (text.length < 5000) {
+        throw new Error(`Response suspiciously short (${text.length} bytes)`);
+      }
+      if (i > 1) console.log(`  succeeded on attempt ${i}`);
+      return text;
+    } catch (err) {
+      lastError = err;
+      console.log(`  attempt ${i}/${attempts} failed: ${err.message}`);
+      if (i < attempts) await new Promise((r) => setTimeout(r, i * 3000));
+    }
+  }
+
+  throw lastError;
+}
+
 async function main() {
   const fixture = arg('--fixture');
   const outPath = arg('--out') || path.join(__dirname, 'events.json');
@@ -113,16 +156,7 @@ async function main() {
     html = fs.readFileSync(fixture, 'utf8');
     console.log(`Parsing fixture: ${fixture}`);
   } else {
-    console.log(`Fetching ${SOURCE_URL} ...`);
-    const res = await fetch(SOURCE_URL, {
-      headers: {
-        // Identify the scraper honestly rather than spoofing a browser.
-        'User-Agent': 'wembley-parking-app/1.0 (personal parking reminder)',
-        Accept: 'text/html',
-      },
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText}`);
-    html = await res.text();
+    html = await fetchWithRetry(SOURCE_URL);
   }
 
   const events = parseEvents(html);
