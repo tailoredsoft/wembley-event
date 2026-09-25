@@ -1,6 +1,6 @@
 {
-  "name": "Wembley Parking",
-  "short_name": "Wembley",
+  "name": "Wembley Stadium Events",
+  "short_name": "Wembley Events",
   "description": "Shows which of the next 7 days are Wembley Stadium event days.",
   "start_url": ".",
   "scope": ".",
