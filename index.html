@@ -249,15 +249,74 @@
   .cell.today { box-shadow: 0 0 0 2px #ffffff inset; }
   .cell.event:active { filter: brightness(1.25); }
 
-  #detail {
-    min-height: 20px;
-    margin: 2px 0 0;
+  #aheadHint {
+    margin: 0 0 14px;
     font-size: 13px;
-    font-weight: 600;
-    color: #e6edf3;
+    color: var(--muted);
   }
 
-  #detail.empty { color: var(--muted); font-weight: 400; }
+  /* Selected cell keeps an amber ring so it's obvious which date the bar is
+     describing, even when the bar is at the other end of the screen. */
+  .cell.sel { box-shadow: 0 0 0 3px #f5a300 inset; }
+
+  /* The detail bar is fixed to the viewport rather than sitting in the flow.
+     Tapping a date in October used to put its details above September, forcing
+     a scroll back up to read them. */
+  #detailBar {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(max(env(safe-area-inset-bottom), 10px) + 6px);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 10px 12px 14px;
+    background: #202730;
+    border: 1px solid #39424e;
+    border-radius: 13px;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s;
+    z-index: 10;
+  }
+
+  #detailBar.on {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  #detailText {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  #detailClose {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 8px;
+    font-size: 15px;
+    line-height: 1;
+    background: #2c3540;
+    border-color: #454f5c;
+  }
+
+  /* Give the last calendar row room to scroll clear of the bar. */
+  body.bar-open { padding-bottom: calc(max(env(safe-area-inset-bottom), 16px) + 64px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    #detailBar { transition: none; transform: none; }
+  }
 
   .hint {
     flex: 0 0 auto;
@@ -310,8 +369,13 @@
 </div>
 
 <section id="ahead" aria-label="Months ahead">
-  <p id="detail" class="empty">Tap a red date for details</p>
+  <p id="aheadHint">Tap a red date for details</p>
 </section>
+
+<div id="detailBar" role="status" aria-live="polite">
+  <span id="detailText"></span>
+  <button id="detailClose" type="button" aria-label="Close details">✕</button>
+</div>
 
 <footer>
   <span id="status">Loading…</span>
@@ -485,7 +549,6 @@
    */
   function renderAhead(byDate, lastKnown) {
     var ahead = document.getElementById('ahead');
-    var detail = document.getElementById('detail');
     if (!lastKnown) {
       ahead.querySelectorAll('.month').forEach(function (n) { n.remove(); });
       return;
@@ -577,20 +640,46 @@
     ahead.querySelectorAll('.month').forEach(function (n) { n.remove(); });
     ahead.appendChild(frag);
 
-    detail.textContent = 'Tap a red date for details';
-    detail.className = 'empty';
+    // The cells were just replaced, so any previous selection is gone.
+    hideDetail();
+  }
+
+  function hideDetail() {
+    document.getElementById('detailBar').className = '';
+    document.body.classList.remove('bar-open');
+    var prev = document.querySelector('.cell.sel');
+    if (prev) prev.classList.remove('sel');
+  }
+
+  function showDetail(cell) {
+    var prev = document.querySelector('.cell.sel');
+    if (prev) prev.classList.remove('sel');
+    cell.classList.add('sel');
+
+    var d = new Date(cell.dataset.iso + 'T12:00:00');
+    document.getElementById('detailText').textContent =
+      d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long' }) +
+      ' — ' + cell.dataset.names;
+
+    document.getElementById('detailBar').className = 'on';
+    document.body.classList.add('bar-open');
   }
 
   // One delegated listener rather than one per cell.
   document.addEventListener('click', function (e) {
-    var cell = e.target.closest ? e.target.closest('.cell.event') : null;
+    if (!e.target.closest) return;
+
+    if (e.target.closest('#detailClose')) {
+      hideDetail();
+      return;
+    }
+
+    var cell = e.target.closest('.cell.event');
     if (!cell) return;
-    var detail = document.getElementById('detail');
-    var d = new Date(cell.dataset.iso + 'T12:00:00');
-    detail.className = '';
-    detail.textContent =
-      d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long' }) +
-      ' — ' + cell.dataset.names;
+
+    // Tapping the selected date again closes the bar.
+    if (cell.classList.contains('sel')) hideDetail();
+    else showDetail(cell);
   });
 
   document.addEventListener('keydown', function (e) {
